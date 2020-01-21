@@ -1,0 +1,105 @@
+<project name="react-closure-compiler" basedir="." default="jar">
+
+  <!-- Force Java 8 -->
+  <property name="ant.build.javac.source" value="1.8" />
+  <property name="ant.build.javac.target" value="1.8" />
+
+  <property name="javac.debug" value="on" />
+  <property name="src.dir" value="${basedir}/src" />
+  <property name="test.dir" value="${basedir}/test" />
+  <property name="build.dir" value="${basedir}/build" />
+  <property name="classes.dir" value="${build.dir}/classes" />
+  <property name="testbuild.dir" value="${basedir}/testbuild" />
+  <property name="testclasses.dir" value="${testbuild.dir}/classes" />
+  <property name="lib.dir" value="${basedir}/lib" />
+  <property name="demo.dir" value="${basedir}/demo" />
+  <property name="plovr.dir" value="${basedir}/../plovr" />
+
+  <target name="clean" description="delete generated files">
+    <delete dir="${build.dir}" />
+    <delete dir="${testbuild.dir}" />
+  </target>
+
+  <target name="compile">
+    <mkdir dir="${classes.dir}" />
+    <javac srcdir="${src.dir}"
+           destdir="${classes.dir}"
+           debug="${javac.debug}">
+      <classpath>
+        <fileset dir="${lib.dir}" includes="*.jar" />
+      </classpath>
+      <compilerarg value="-Xlint:deprecation"/>
+    </javac>
+
+    <!-- Copy resources needed. -->
+    <copy todir="${classes.dir}">
+      <fileset dir="${src.dir}">
+        <include name="**/*.js" />
+      </fileset>
+    </copy>
+  </target>
+
+  <target name="jar" depends="compile">
+    <jar destfile="${build.dir}/react-closure-compiler.jar" update="true">
+      <fileset dir="${classes.dir}" />
+    </jar>
+  </target>
+
+  <target name="run-demo" depends="jar">
+    <java classpath="${build.dir}/react-closure-compiler.jar;${plovr.dir}/build/plovr.jar"
+          classname="org.plovr.cli.Main"
+          dir="${demo.dir}"
+          fork="true"
+          maxmemory="128m">
+      <arg value="serve" />
+      <arg value="${demo.dir}/plovr-config.js" />
+    </java>
+  </target>
+
+  <target name="testcompile" depends="compile">
+    <mkdir dir="${testclasses.dir}" />
+    <javac srcdir="${test.dir}"
+           destdir="${testclasses.dir}"
+           debug="${javac.debug}">
+      <classpath>
+        <pathelement location="${classes.dir}" />
+        <fileset dir="${lib.dir}" includes="*.jar" />
+      </classpath>
+      <compilerarg value="-Xlint:deprecation"/>
+    </javac>
+
+    <!-- Copy resources needed. -->
+    <copy todir="${testclasses.dir}">
+      <fileset dir="${test.dir}">
+        <include name="**/*.js" />
+      </fileset>
+    </copy>
+  </target>
+
+  <!--
+    Use -Dtest.class to change what tests are run on the command-line.
+    i.e., -Dtest.class=ReactTest will run just that test class.
+  -->
+  <property name="test.class" value="*Test"/>
+
+  <target name="test" depends="testcompile,jar">
+    <mkdir dir="build/testoutput"/>
+    <junit failureproperty="hasFailingTests" showoutput="true">
+      <formatter type="plain" usefile="false" />
+      <formatter type="xml" />
+
+      <batchtest fork="yes" todir="build/testoutput">
+        <fileset dir="${test.dir}">
+          <include name="**/${test.class}.java" />
+        </fileset>
+      </batchtest>
+      <classpath>
+        <pathelement location="${testclasses.dir}" />
+        <pathelement location="${classes.dir}" />
+        <fileset dir="${lib.dir}" includes="*.jar" />
+      </classpath>
+    </junit>
+    <fail if="hasFailingTests" />
+  </target>
+
+</project>
